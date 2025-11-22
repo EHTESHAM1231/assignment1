@@ -1,7 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SkillOfferController;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('skill-offers.index');
 });
+
+Route::resource('skill-offers', SkillOfferController::class);

@@ -1,0 +1,106 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f8f8f8;
+}
+
+header {
+    background: #333;
+    color: #fff;
+    padding: 15px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+nav a {
+    color: #fff;
+    margin-right: 15px;
+    text-decoration: none;
+}
+
+.container {
+    width: 90%;
+    max-width: 1000px;
+    margin: 20px auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+table, th, td {
+    border: 1px solid #ccc;
+}
+
+th {
+    background: #eee;
+    padding: 10px;
+}
+
+td {
+    padding: 10px;
+}
+
+.actions a,
+button {
+    margin-right: 10px;
+    padding: 5px 10px;
+    background: #333;
+    color: #fff;
+    text-decoration: none;
+    border: none;
+    border-radius: 5px;
+}
+
+.actions button {
+    cursor: pointer;
+}
+
+.message {
+    padding: 10px;
+    background: #d1ffd1;
+    border: 1px solid #88cc88;
+    margin-bottom: 15px;
+}
+/* Pagination */
+.pagination-nav {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.pagination-nav a,
+.pagination-nav span {
+    display: inline-block;
+    padding: 6px 12px;
+    margin: 0 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.pagination-nav a:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+.pagination-nav .disabled {
+    background-color: #eee;
+    color: #888;
+    border-color: #ddd;
+}
+
+.pagination-nav .page-info {
+    border: none;
+    background: transparent;
+}
