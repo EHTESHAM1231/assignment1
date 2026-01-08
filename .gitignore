@@ -3,6 +3,7 @@
 .env
 .env.backup
 .env.production
+.env.local
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -22,3 +23,13 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+npm-debug.log
+yarn-error.log
+
+# Database
+/database/*.sqlite
+/database/*.sqlite-journal
+
+# Cache
+bootstrap/cache/*.php
+!bootstrap/cache/.gitignore

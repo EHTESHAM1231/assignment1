@@ -1,131 +1,366 @@
-# CHT2520 Assignment 1 U2366447 Muhammad Ehtesham Siddiqui
+# Skill Swap Hub - CHT2520 Assignment 2
+## Muhammad Ehtesham Siddiqui (U2366447)
 
-## 1. Introduction & Scenario
+## 1. Introduction
 
-For this assignment, I created a simple web application called Skill Swap Hub. The goal of the application is to allow users to share a skill they have and connect with others who may be interested in learning it. This scenario is unique, practical, and fits the assignment requirement of using a single database table.
+This project extends the Assignment 1 Skill Swap Hub application with advanced Laravel features. The original application allowed users to share skills they can teach others. Assignment 2 adds authentication, authorization, OAuth social login, database relationships, and a modern responsive UI using Tailwind CSS.
 
-The Skill Swap Hub stores information about different skill set offers. Each offer contains:
+### New Features Implemented
+- User authentication with Laravel Breeze
+- OAuth 2.0 social login (Google & GitHub) via Laravel Socialite
+- Authorization policies for resource protection
+- Eloquent relationships (User → SkillOffers, Category → SkillOffers)
+- Database normalization with categories
+- Advanced search and filtering
+- Responsive Tailwind CSS design
+- User dashboard with statistics
 
-- Provider’s name  
-- Skill they are offering  
-- Expertise level  
-- Teaching mode (online or in person)  
-- Contact information  
-- Optional availability notes  
+---
 
-Users can:
+## 2. Authentication & Authorization
 
-- View all skill offers  
-- Search through offers  
-- Create new entries  
-- Edit existing ones  
-- Delete offers  
+### 2.1 Laravel Breeze Authentication
 
-Although the application is minimalistic, it provides a real-world example of how communities or clubs could swap skills without money. More importantly, it demonstrates my understanding of the Laravel framework and its core features, which is the main goal of the assignment.
+**Implementation**: Laravel Breeze with Blade templates  
+**Location**: `app/Http/Controllers/Auth/`, `resources/views/auth/`
 
+Laravel Breeze provides a minimal, clean authentication scaffolding including registration, login, password reset, and email verification.
 
+```php
+// routes/web.php - Protected routes
+Route::middleware('auth')->group(function () {
+    Route::get('/skill-offers/create', [SkillOfferController::class, 'create']);
+    Route::post('/skill-offers', [SkillOfferController::class, 'store']);
+    // ... other protected routes
+});
+```
 
-## 2. MVC Design Pattern in My Application
+**Critical Analysis**:
+- **Chosen because**: Lightweight, follows Laravel conventions, includes Tailwind CSS
+- **Problems solved**: Secure user registration, session management, CSRF protection
+- **Limitations**: Basic authentication only; no built-in 2FA or advanced security features
 
-Laravel is built using the Model-View-Controller (MVC) design pattern. I applied MVC correctly and consistently throughout my project.
+### 2.2 OAuth Social Login (Laravel Socialite)
 
-### Model  Handling the Data
+**Implementation**: Laravel Socialite for Google and GitHub OAuth  
+**Location**: `app/Http/Controllers/Auth/SocialiteController.php`
 
-The model used in this project is SkillOffer, representing the single database table.
+```php
+// SocialiteController.php
+public function callback(string $provider): RedirectResponse
+{
+    $socialUser = Socialite::driver($provider)->user();
+    
+    // Find or create user
+    $user = User::where('provider', $provider)
+        ->where('provider_id', $socialUser->getId())
+        ->first();
 
-- Defines which fields are mass assignable using the $fillable array  
-- Protects against mass-assignment vulnerabilities  
-- Uses Laravel’s Eloquent ORM for database interaction  
+    if (!$user) {
+        $user = User::create([
+            'name' => $socialUser->getName(),
+            'email' => $socialUser->getEmail(),
+            'provider' => $provider,
+            'provider_id' => $socialUser->getId(),
+            'avatar' => $socialUser->getAvatar(),
+        ]);
+    }
 
-### View — Displaying the Interface
+    Auth::login($user, true);
+    return redirect()->intended(route('dashboard'));
+}
+```
 
-All user interfaces are built using Blade templates located in:  
-`resources/views/skill_offers/`
+**Critical Analysis**:
+- **Chosen because**: Simplifies OAuth implementation, supports multiple providers
+- **Problems solved**: Users can login without creating passwords, improved UX
+- **Limitations**: Requires external API credentials, dependent on third-party services
 
-Examples:
+### 2.3 Authorization Policies
 
-- index.blade.php — shows paginated list of skill offers  
-- create.blade.php — form to create a new offer  
-- edit.blade.php — form to edit existing offers  
-- show.blade.php — full details of a single skill offer  
+**Implementation**: Laravel Policies for resource-level authorization  
+**Location**: `app/Policies/SkillOfferPolicy.php`
 
-All views extend a shared layout:  
-`layouts/app.blade.php`
+```php
+// SkillOfferPolicy.php
+public function update(User $user, SkillOffer $skillOffer): bool
+{
+    return $user->id === $skillOffer->user_id;
+}
 
-I used simple custom CSS located in:  
-`public/css/styles.css`
+public function delete(User $user, SkillOffer $skillOffer): bool
+{
+    return $user->id === $skillOffer->user_id;
+}
+```
 
-Since no CSS frameworks or JavaScript were allowed, the design is clean and accessible.
+**Critical Analysis**:
+- **Chosen because**: Clean separation of authorization logic, reusable across controllers
+- **Problems solved**: Prevents unauthorized editing/deletion of other users' content
+- **Limitations**: Requires manual policy registration for new models
 
-### Controller — Application Logic
+---
 
-The controller (SkillOfferController) handles all logic between the model and views.
+## 3. Database Relationships & Normalization
 
-Key examples:
+### 3.1 Eloquent Relationships
 
-- index() — retrieves and passes data to the view  
-- store() & `update() — validate user input before storing it  
-- destroy() — deletes entries safely  
-- create() & `edit() — return the form views  
+**Implementation**: One-to-Many relationships  
+**Location**: `app/Models/`
 
-This keeps the MVC structure clean:
+```php
+// User.php
+public function skillOffers()
+{
+    return $this->hasMany(SkillOffer::class);
+}
 
-- Views contain no data logic  
-- Models contain no display logic  
-- Controller  manages all decision-making  
+// SkillOffer.php
+public function user()
+{
+    return $this->belongsTo(User::class);
+}
 
+public function category()
+{
+    return $this->belongsTo(Category::class);
+}
 
+// Category.php
+public function skillOffers()
+{
+    return $this->hasMany(SkillOffer::class);
+}
+```
 
-## 3. Good Practices Used in My Application
+### 3.2 Database Schema
 
-Throughout development, I followed several good Laravel and general web development practices.
+```php
+// Migration: add_user_id_to_skill_offers_table.php
+Schema::table('skill_offers', function (Blueprint $table) {
+    $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
+});
 
-### Database Migrations & Seeders
+// Migration: create_categories_table.php
+Schema::create('categories', function (Blueprint $table) {
+    $table->id();
+    $table->string('name')->unique();
+    $table->string('slug')->unique();
+    $table->text('description')->nullable();
+    $table->string('color', 7)->default('#3B82F6');
+    $table->timestamps();
+});
+```
 
-- Created a migration for the skill_offers table  
-- Added a seeder with 30 sample records, useful for demonstrating pagination, searching, and overall functionality  
+**Critical Analysis**:
+- **Chosen because**: Normalizes data, enables efficient queries with eager loading
+- **Problems solved**: Data redundancy, referential integrity, organized skill categorization
+- **Limitations**: Increased query complexity, requires careful eager loading to avoid N+1 problems
 
-### Input Validation
+---
 
-- Used Laravel’s built in validation inside store() and update() 
-- Prevents invalid form submissions  
-- Ensures clean and safe data  
+## 4. Frontend Implementation
 
-### Routing with Resource Controllers
+### 4.1 Tailwind CSS
 
-Used:
+**Implementation**: Tailwind CSS 4.0 with Vite  
+**Location**: `resources/css/app.css`, `tailwind.config.js`
 
-Route::resource(skill_offers, SkillOfferController::class)
+The UI uses Tailwind's utility classes for responsive, modern design:
 
-This automatically generates CRUD routes, keeping routing clean and following Laravel conventions.
+```html
+<!-- Responsive grid for skill cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    @foreach ($skillOffers as $offer)
+        <div class="bg-gray-50 rounded-lg border border-gray-200 
+                    overflow-hidden hover:shadow-lg transition-shadow duration-200">
+            <!-- Card content -->
+        </div>
+    @endforeach
+</div>
+```
 
-### Pagination & Search
+**Critical Analysis**:
+- **Chosen because**: Utility-first approach, highly customizable, excellent documentation
+- **Problems solved**: Consistent styling, responsive design, rapid development
+- **Limitations**: HTML can become verbose, learning curve for utility classes
 
-- Pagination implemented using:  
+### 4.2 Alpine.js Interactivity
 
- $skillOffers->paginate(5);
+**Implementation**: Alpine.js for lightweight JavaScript interactions  
+**Location**: Included via Laravel Breeze
 
-- Search implemented using conditional query filters inside the controller  
+```html
+<!-- Mobile navigation toggle -->
+<nav x-data="{ open: false }">
+    <button @click="open = ! open">Menu</button>
+    <div :class="{'block': open, 'hidden': ! open}">
+        <!-- Navigation items -->
+    </div>
+</nav>
+```
 
-### Clean & Consistent Layout
+---
 
-- Shared Blade layout for consistent design  
-- Fully custom CSS  
-- No external libraries, as required by the assignment  
+## 5. Advanced Features
 
+### 5.1 Search and Filtering
 
+```php
+// SkillOfferController.php - index method
+public function index(Request $request)
+{
+    $query = SkillOffer::with(['user', 'category']);
 
-## 4. Conclusion
+    if ($request->filled('search')) {
+        $search = $request->input('search');
+        $query->where(function ($q) use ($search) {
+            $q->where('skill_name', 'like', "%$search%")
+              ->orWhere('name', 'like', "%$search%");
+        });
+    }
 
-The Skill Swap Hub project successfully demonstrates my understanding of:
+    if ($request->filled('category')) {
+        $query->where('category_id', $request->input('category'));
+    }
 
-- MVC architecture  
-- Routing  
-- Migrations  
-- Controllers  
-- Eloquent Models  
-- Blade Templates  
-- Validation  
-- Pagination  
+    if ($request->filled('level')) {
+        $query->where('skill_level', $request->input('level'));
+    }
 
-The application is easy to navigate, meets all assignment requirements, and follows good development practices.
+    return view('skill_offers.index', [
+        'skillOffers' => $query->paginate(6)->withQueryString(),
+        'categories' => Category::orderBy('name')->get()
+    ]);
+}
+```
+
+### 5.2 User Dashboard
+
+The dashboard displays personalized statistics and the user's skill offers:
+
+```php
+// dashboard.blade.php
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white p-6 rounded-lg shadow">
+        <div class="text-2xl font-bold text-indigo-600">
+            {{ Auth::user()->skillOffers()->count() }}
+        </div>
+        <div class="text-sm text-gray-500">Skills Shared</div>
+    </div>
+</div>
+```
+
+---
+
+## 6. Installation & Setup
+
+### Option 1: GitHub Codespaces (Recommended)
+
+1. Click the green "Code" button on the GitHub repository
+2. Select "Codespaces" tab
+3. Click "Create codespace on main"
+4. Wait for the setup to complete (2-3 minutes)
+5. Run the development server:
+   ```bash
+   php artisan serve --host=0.0.0.0 --port=8000
+   ```
+6. Click the "Open in Browser" button when the port notification appears
+
+### Option 2: Local Development
+
+#### Prerequisites
+- PHP 8.2+
+- Composer
+- Node.js 18+ & npm
+- SQLite
+
+### Installation Steps
+
+```bash
+# 1. Clone the repository
+git clone [your-repository-url]
+cd larvel-project
+
+# 2. Install PHP dependencies
+composer install
+
+# 3. Install Node dependencies
+npm install
+
+# 4. Environment setup
+cp .env.example .env
+php artisan key:generate
+
+# 5. Database setup (SQLite)
+touch database/database.sqlite
+php artisan migrate --seed
+
+# 6. Build frontend assets
+npm run build
+
+# 7. Start the development server
+php artisan serve
+```
+
+### OAuth Configuration (Optional)
+
+To enable Google/GitHub login, add credentials to `.env`:
+
+```env
+# Google OAuth (https://console.cloud.google.com/apis/credentials)
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+
+# GitHub OAuth (https://github.com/settings/developers)
+GITHUB_CLIENT_ID=your-client-id
+GITHUB_CLIENT_SECRET=your-client-secret
+GITHUB_REDIRECT_URI=http://localhost:8000/auth/github/callback
+```
+
+---
+
+## 7. Project Structure
+
+```
+larvel-project/
+├── app/
+│   ├── Http/Controllers/
+│   │   ├── Auth/
+│   │   │   └── SocialiteController.php    # OAuth handling
+│   │   ├── ProfileController.php
+│   │   └── SkillOfferController.php       # Main CRUD controller
+│   ├── Models/
+│   │   ├── Category.php                   # Category model
+│   │   ├── SkillOffer.php                 # Skill offer model
+│   │   └── User.php                       # User model with OAuth
+│   └── Policies/
+│       └── SkillOfferPolicy.php           # Authorization policy
+├── database/
+│   ├── migrations/                        # Database migrations
+│   └── seeders/                           # Sample data seeders
+├── resources/views/
+│   ├── auth/                              # Authentication views
+│   ├── layouts/                           # Layout templates
+│   ├── profile/                           # Profile management
+│   └── skill_offers/                      # Skill offer views
+└── routes/
+    ├── auth.php                           # Auth routes (Breeze)
+    └── web.php                            # Application routes
+```
+
+---
+
+## 8. Conclusion
+
+This assignment demonstrates proficiency in:
+- **Authentication**: Laravel Breeze with session-based auth
+- **OAuth Integration**: Laravel Socialite for social login
+- **Authorization**: Policy-based access control
+- **Eloquent ORM**: Relationships and eager loading
+- **Database Design**: Normalized schema with foreign keys
+- **Modern Frontend**: Tailwind CSS responsive design
+- **Best Practices**: MVC architecture, validation, security
+
+The Skill Swap Hub now provides a complete, secure platform for users to share and discover skills within their community.
